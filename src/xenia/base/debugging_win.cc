@@ -17,7 +17,11 @@ namespace debugging {
 
 bool IsDebuggerAttached() { return IsDebuggerPresent() ? true : false; }
 
-void Break() { __debugbreak(); }
+void Break() {
+	if (IsDebuggerAttached()) {
+		__debugbreak();
+	}
+}
 
 void DebugPrint(const char* fmt, ...) {
   StringBuffer buff;

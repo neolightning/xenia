@@ -50,11 +50,11 @@ HostPathEntry* HostPathEntry::Create(Device* device, Entry* parent,
 }
 
 X_STATUS HostPathEntry::Open(uint32_t desired_access, File** out_file) {
-  if (is_read_only() && (desired_access & (FileAccess::kFileWriteData |
+  /*if (is_read_only() && (desired_access & (FileAccess::kFileWriteData |
                                            FileAccess::kFileAppendData))) {
     XELOGE("Attempting to open file for write access on read-only device");
     return X_STATUS_ACCESS_DENIED;
-  }
+  }*/
   auto file_handle =
       xe::filesystem::FileHandle::OpenExisting(local_path_, desired_access);
   if (!file_handle) {

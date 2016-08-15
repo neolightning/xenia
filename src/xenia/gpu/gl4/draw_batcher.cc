@@ -163,11 +163,13 @@ bool DrawBatcher::BeginDrawArrays(PrimitiveType prim_type,
     return false;
   }
 
+  uint32_t start_index = register_file_->values[XE_GPU_REG_VGT_INDX_OFFSET].u32;
+
   auto cmd = active_draw_.draw_arrays_cmd;
   cmd->base_instance = 0;
   cmd->instance_count = 1;
   cmd->count = index_count;
-  cmd->first_index = 0;
+  cmd->first_index = start_index;
 
   return true;
 }
@@ -193,7 +195,7 @@ bool DrawBatcher::BeginDrawElements(PrimitiveType prim_type,
   }
 
   uint32_t start_index = register_file_->values[XE_GPU_REG_VGT_INDX_OFFSET].u32;
-  assert_zero(start_index);
+  //assert_zero(start_index);
 
   auto cmd = active_draw_.draw_elements_cmd;
   cmd->base_instance = 0;

@@ -153,7 +153,11 @@ class Win32Handle : public T {
 
 WaitResult Wait(WaitHandle* wait_handle, bool is_alertable,
                 std::chrono::milliseconds timeout) {
-  HANDLE handle = wait_handle->native_handle();
+	if (!wait_handle)
+	{
+		return WaitResult::kSuccess;
+	}
+	HANDLE handle = wait_handle->native_handle();
   DWORD result = WaitForSingleObjectEx(handle, DWORD(timeout.count()),
                                        is_alertable ? TRUE : FALSE);
   switch (result) {

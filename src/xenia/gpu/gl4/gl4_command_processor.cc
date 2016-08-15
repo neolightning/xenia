@@ -518,6 +518,13 @@ bool GL4CommandProcessor::IssueDraw(PrimitiveType prim_type,
     // Special copy handling.
     draw_batcher_.DiscardDraw();
     return IssueCopy();
+	//return true;
+  }
+
+  if ((regs[XE_GPU_REG_RB_SURFACE_INFO].u32 & 0x3FFF) == 0) {
+	  // Doesn't actually draw.
+	  draw_batcher_.DiscardDraw();
+	  return true;
   }
 
 #define CHECK_ISSUE_UPDATE_STATUS(status, mismatch, error_message) \
@@ -871,7 +878,7 @@ GL4CommandProcessor::UpdateStatus GL4CommandProcessor::UpdateViewportState() {
 
   bool dirty = false;
   // dirty |= SetShadowRegister(&state_regs.pa_cl_clip_cntl,
-  //     XE_GPU_REG_PA_CL_CLIP_CNTL);
+   //    XE_GPU_REG_PA_CL_CLIP_CNTL);
   dirty |= SetShadowRegister(&regs.rb_surface_info, XE_GPU_REG_RB_SURFACE_INFO);
   dirty |= SetShadowRegister(&regs.pa_cl_vte_cntl, XE_GPU_REG_PA_CL_VTE_CNTL);
   dirty |= SetShadowRegister(&regs.pa_su_sc_mode_cntl,
@@ -894,7 +901,7 @@ GL4CommandProcessor::UpdateStatus GL4CommandProcessor::UpdateViewportState() {
                              XE_GPU_REG_PA_CL_VPORT_YSCALE);
   dirty |= SetShadowRegister(&regs.pa_cl_vport_zscale,
                              XE_GPU_REG_PA_CL_VPORT_ZSCALE);
-
+							 
   // Much of this state machine is extracted from:
   // https://github.com/freedreno/mesa/blob/master/src/mesa/drivers/dri/r200/r200_state.c
   // http://fossies.org/dox/MesaLib-10.3.5/fd2__gmem_8c_source.html
@@ -935,6 +942,11 @@ GL4CommandProcessor::UpdateStatus GL4CommandProcessor::UpdateViewportState() {
   //  glClipControl(GL_LOWER_LEFT, GL_NEGATIVE_ONE_TO_ONE);
   //}
 
+  bool window_offset_dirty = SetShadowRegister(&regs.pa_sc_window_offset,
+	  XE_GPU_REG_PA_SC_WINDOW_OFFSET);
+  window_offset_dirty |= SetShadowRegister(&regs.pa_su_sc_mode_cntl,
+	  XE_GPU_REG_PA_SU_SC_MODE_CNTL);
+
   // Window parameters.
   // http://ftp.tku.edu.tw/NetBSD/NetBSD-current/xsrc/external/mit/xf86-video-ati/dist/src/r600_reg_auto_r6xx.h
   // See r200UpdateWindow:
@@ -951,6 +963,13 @@ GL4CommandProcessor::UpdateStatus GL4CommandProcessor::UpdateViewportState() {
       window_offset_y |= 0x8000;
     }
   }
+
+  // VK_DYNAMIC_STATE_SCISSOR
+  bool scissor_state_dirty = window_offset_dirty;
+  scissor_state_dirty |= SetShadowRegister(&regs.pa_sc_window_scissor_tl,
+	  XE_GPU_REG_PA_SC_WINDOW_SCISSOR_TL);
+  scissor_state_dirty |= SetShadowRegister(&regs.pa_sc_window_scissor_br,
+	  XE_GPU_REG_PA_SC_WINDOW_SCISSOR_BR);
 
   GLint ws_x = regs.pa_sc_window_scissor_tl & 0x7FFF;
   GLint ws_y = (regs.pa_sc_window_scissor_tl >> 16) & 0x7FFF;
@@ -1261,11 +1280,11 @@ GL4CommandProcessor::UpdateDepthStencilState() {
       /*  7 */ GL_DECR,
   };
   // A2XX_RB_DEPTHCONTROL_Z_ENABLE
-  if (regs.rb_depthcontrol & 0x00000002) {
-    glEnable(GL_DEPTH_TEST);
-  } else {
-    glDisable(GL_DEPTH_TEST);
-  }
+  //if (regs.rb_depthcontrol & 0x00000002) {
+  //  glEnable(GL_DEPTH_TEST);
+  //} else {
+  //  glDisable(GL_DEPTH_TEST);
+  //}
   // glDisable(GL_DEPTH_TEST);
   // A2XX_RB_DEPTHCONTROL_Z_WRITE_ENABLE
   glDepthMask((regs.rb_depthcontrol & 0x00000004) ? GL_TRUE : GL_FALSE);
@@ -1395,8 +1414,8 @@ GL4CommandProcessor::UpdateStatus GL4CommandProcessor::PopulateVertexBuffers() {
         fetch = &group->vertex_fetch_2;
         break;
     }
-    assert_true(fetch->endian == 2);
-
+    //assert_true(fetch->endian == 2);
+	assert_true(fetch->type == 0x3);
     size_t valid_range = size_t(fetch->size * 4);
 
     trace_writer_.WriteMemoryRead(fetch->address << 2, valid_range);
@@ -1544,6 +1563,7 @@ bool GL4CommandProcessor::IssueCopy() {
   // Render targets 0-3, 4 = depth
   uint32_t copy_src_select = copy_control & 0x7;
   bool color_clear_enabled = (copy_control >> 8) & 0x1;
+  //for nvidia only
   bool depth_clear_enabled = (copy_control >> 9) & 0x1;
   auto copy_command = static_cast<CopyCommand>((copy_control >> 20) & 0x3);
 
@@ -1911,9 +1931,9 @@ bool GL4CommandProcessor::IssueCopy() {
 
   if (color_clear_enabled) {
     // Clear the render target we selected for copy.
-    assert_true(copy_src_select < 3);
+    assert_true(copy_src_select <= 3);
     // TODO(benvanik): verify color order.
-    float color[] = {(copy_color_clear & 0xFF) / 255.0f,
+    float color[] = {((copy_color_clear >> 0) & 0xFF) / 255.0f,
                      ((copy_color_clear >> 8) & 0xFF) / 255.0f,
                      ((copy_color_clear >> 16) & 0xFF) / 255.0f,
                      ((copy_color_clear >> 24) & 0xFF) / 255.0f};

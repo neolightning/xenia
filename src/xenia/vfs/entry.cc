@@ -72,9 +72,9 @@ Entry* Entry::IterateChildren(const xe::filesystem::WildcardEngine& engine,
 
 Entry* Entry::CreateEntry(std::string name, uint32_t attributes) {
   auto global_lock = global_critical_region_.Acquire();
-  if (is_read_only()) {
-    return nullptr;
-  }
+  //if (is_read_only()) {
+  //  return nullptr;
+  //}
   if (GetChild(name)) {
     // Already exists.
     return nullptr;
